@@ -45,17 +45,11 @@ public class AuthController {
         var usuario = repo.findByEmail(user.getEmail());
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String token = jwtTokenProvider.createToken(user.getEmail(), usuario.get().getUsuarioRoles());
+        String token = jwtTokenProvider.generateToken(authentication);
         UsuarioResponse usuarioResp = new UsuarioResponse();
         usuarioResp.fromSignin(token, usuario.get());
 
         return ResponseEntity.ok(usuarioResp);
     }
 
-    @RequestMapping(value="/refresh", method=RequestMethod.POST)
-    @PreAuthorize("hasRole('ROLE_ADMIN') or hasRole('ROLE_CLIENT')")
-    public String refresh(HttpServletRequest req) {
-        return jwtTokenProvider.createToken(req.getRemoteUser(),
-                repo.findByNome(req.getRemoteUser()).getUsuarioRoles());
-    }
 }

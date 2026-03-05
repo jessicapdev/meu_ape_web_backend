@@ -6,7 +6,6 @@ import com.br.meu_ape.model.Usuario;
 import com.br.meu_ape.model.UsuarioRole;
 import com.br.meu_ape.model.response.UsuarioResponse;
 import com.br.meu_ape.repository.UsuarioRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -54,8 +53,7 @@ public class UsuarioService {
         return obj;
     }
 
-    public Usuario update (Usuario obj){
-        Usuario newObj = find(obj.getId());
+    public Usuario update (Usuario newObj, Usuario obj){
         updateData(newObj, obj);
         return repo.save(newObj);
     }
@@ -86,10 +84,12 @@ public class UsuarioService {
             newObj.setEmail(obj.getEmail());
         }if(obj.getFoto() != null){
             newObj.setFoto(obj.getFoto());
+        }if(obj.getTelefone() != null){
+            newObj.setTelefone(obj.getTelefone());
         }
     }
 
-    public UsuarioResponse findUser(String email) {
+    public UsuarioResponse findUserResponse(String email) {
         Optional<Usuario> usuario = repo.findByEmail(email);
         UsuarioResponse usuarioResponse = new UsuarioResponse();
 
@@ -98,11 +98,15 @@ public class UsuarioService {
         }
         usuarioResponse.parseUsuario(usuario.get());
         return usuarioResponse;
-
     }
 
-    public Usuario whoami(HttpServletRequest req) {
-        return repo.findByNome(jwtTokenProvider.getUsername(jwtTokenProvider.resolveToken(req)));
+    public Usuario findUser(String email) {
+        Optional<Usuario> usuario = repo.findByEmail(email);
+
+        if (usuario.isEmpty()) {
+            throw new GlobalExceptionHandler.CustomException("O usuário não existe", HttpStatus.NOT_FOUND);
+        }
+        return usuario.get();
     }
 
 }

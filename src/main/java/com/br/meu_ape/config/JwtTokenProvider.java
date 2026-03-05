@@ -1,85 +1,40 @@
 package com.br.meu_ape.config;
 
 import com.br.meu_ape.exception.GlobalExceptionHandler;
-import com.br.meu_ape.model.UsuarioRole;
-import io.jsonwebtoken.JwtException;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import jakarta.annotation.PostConstruct;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @Component
 public class JwtTokenProvider {
 
-  @Value("${security.jwt.token.secret-key}")
-  private String secretKeyString;
+  private final SecretKey secretKey;
+  private final long jwtExpirationInMs;
 
-  @Value("${security.jwt.token.expire-length}")
-  private long validityInMilliseconds;
-
-  @Autowired
-  private MyUserDetails myUserDetails;
-
-  private SecretKey secretKey;
-
-  @PostConstruct
-  protected void init() {
-    this.secretKey = Keys.hmacShaKeyFor(secretKeyString.getBytes(StandardCharsets.UTF_8));
+  public JwtTokenProvider(@Value("${security.jwt.token.secret-key}") String jwtSecret,
+                          @Value("${security.jwt.token.expire-length}") long jwtExpirationInMs) {
+    this.secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+    this.jwtExpirationInMs = jwtExpirationInMs;
   }
 
-  public String createToken(String username, List<UsuarioRole> usuarioRoles) {
 
+  public String generateToken(Authentication authentication) {
     Date now = new Date();
-    Date validity = new Date(now.getTime() + validityInMilliseconds);
+    Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
 
     return Jwts.builder()
-            .subject(username)
-            .claim("auth", usuarioRoles.stream()
-                    .map(s -> new SimpleGrantedAuthority(s.getAuthority()))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList()))
+            .subject(authentication.getName())
             .issuedAt(now)
-            .expiration(validity)
+            .expiration(expiryDate)
             .signWith(secretKey)
             .compact();
-  }
-
-  public Authentication getAuthentication(String token) {
-    UserDetails userDetails = myUserDetails.loadUserByUsername(getUsername(token));
-    return new UsernamePasswordAuthenticationToken(userDetails, "", userDetails.getAuthorities());
-  }
-
-  public String getUsername(String token) {
-    String cleanedToken = cleanToken(token);
-    return Jwts.parser()
-            .verifyWith(secretKey)
-            .build()
-            .parseSignedClaims(cleanedToken)
-            .getPayload()
-            .getSubject();
-  }
-
-  public String resolveToken(HttpServletRequest req) {
-    String bearerToken = req.getHeader("Authorization");
-    if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-      return cleanToken(bearerToken);
-    }
-    return null;
   }
 
   public boolean validateToken(String token) {
@@ -90,18 +45,44 @@ public class JwtTokenProvider {
               .build()
               .parseSignedClaims(cleanedToken);
       return true;
-    } catch (JwtException | IllegalArgumentException e) {
-      throw new GlobalExceptionHandler.CustomException("Expired or invalid JWT token", HttpStatus.INTERNAL_SERVER_ERROR);
+
+    } catch (ExpiredJwtException e) {
+      return false;
+
+    } catch (UnsupportedJwtException | MalformedJwtException | SignatureException e) {
+      throw new GlobalExceptionHandler.CustomException("Invalid JWT token", HttpStatus.UNAUTHORIZED);
+
+    } catch (IllegalArgumentException e) {
+      throw new GlobalExceptionHandler.CustomException("JWT token is null or empty", HttpStatus.BAD_REQUEST);
+
+    } catch (JwtException e) {
+      throw new GlobalExceptionHandler.CustomException("JWT processing error", HttpStatus.UNAUTHORIZED);
     }
   }
 
-  /**
-   * Remove palavra Bearer e espaços em branco e caracteres de controle do token
-   */
-  private String cleanToken(String token) {
-    if (token == null || token.isBlank()) {
-      return null;
+  public String getUsernameFromToken(String token) {
+    try {
+      String cleanedToken = cleanToken(token);
+      Claims claims = Jwts.parser()
+              .verifyWith(secretKey)
+              .build()
+              .parseSignedClaims(cleanedToken)
+              .getPayload();
+
+      return claims.getSubject();
+
+    } catch (ExpiredJwtException e) {
+      throw new GlobalExceptionHandler.CustomException("Token expired", HttpStatus.UNAUTHORIZED);
+
+    } catch (JwtException | IllegalArgumentException e) {
+      throw new GlobalExceptionHandler.CustomException("Invalid JWT token", HttpStatus.UNAUTHORIZED);
     }
-    return token.replaceFirst("(?i)^Bearer\\s*", "").trim();
+  }
+
+  private String cleanToken(String token) {
+    if (token != null && token.startsWith("Bearer ")) {
+      return token.substring(7);
+    }
+    return token;
   }
 }
