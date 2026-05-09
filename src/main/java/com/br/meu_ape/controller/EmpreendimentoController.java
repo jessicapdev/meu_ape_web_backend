@@ -5,20 +5,27 @@ import com.br.meu_ape.dto.EmpreendimentoFiltroDTO;
 import com.br.meu_ape.dto.EmpreendimentoUpdateDTO;
 import com.br.meu_ape.model.Apartamento;
 import com.br.meu_ape.model.Empreendimento;
-import com.br.meu_ape.model.Imagens;
 import com.br.meu_ape.model.projection.EmpreendimentoEmpreendimentoProjection;
 import com.br.meu_ape.model.projection.EmpreendimentoHomeProjection;
-import com.br.meu_ape.model.projection.EmpreendimentoImagemProjection;
 import com.br.meu_ape.model.projection.EmpreendimentoPerfilProjection;
 import com.br.meu_ape.service.EmpreendimentoService;
+import com.mongodb.client.gridfs.model.GridFSFile;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
+import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.List;
@@ -29,8 +36,15 @@ import java.util.Optional;
 @CrossOrigin(origins = "*")
 public class EmpreendimentoController {
 
+    public static final MediaType IMAGE_WEBP = MediaType.valueOf("image/webp");
+    private final GridFsTemplate gridFsTemplate;
+
     @Autowired
     private EmpreendimentoService empreendimentoService;
+
+    public EmpreendimentoController(GridFsTemplate gridFsTemplate) {
+        this.gridFsTemplate = gridFsTemplate;
+    }
 
     @PostMapping
     public ResponseEntity<Empreendimento> criar(@RequestBody EmpreendimentoDTO dto) {
@@ -96,18 +110,28 @@ public class EmpreendimentoController {
     }
 
     @GetMapping("/{id}/imagens")
-    public ResponseEntity<EmpreendimentoImagemProjection> buscarImagemById(
-            @PathVariable String id) {
-        return ResponseEntity.ok(empreendimentoService.listarImagemById(id));
+    public ResponseEntity<Resource> buscarImagemPorId(@PathVariable String id) {
+        GridFSFile file = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(id)));
+        if (file == null) return ResponseEntity.notFound().build();
+
+        GridFsResource resource = gridFsTemplate.getResource(file);
+
+        return ResponseEntity.ok()
+                .contentType(IMAGE_WEBP)
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=31536000")
+                .body(resource);
     }
 
-    @PutMapping("/{id}/imagens")
+    @PutMapping(value = "/{id}/imagens", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Empreendimento> atualizarImagens(
             @PathVariable String id,
-            @RequestBody Imagens novasImagens) {
+            @RequestParam(value = "banner", required = false) MultipartFile banner,
+            @RequestParam(value = "mapa", required = false) MultipartFile mapa,
+            @RequestParam(value = "plantas", required = false) List<MultipartFile> plantas,
+            @RequestParam(value = "galeria", required = false) List<MultipartFile> galeria) {
 
-        Empreendimento atualizado = empreendimentoService.atualizarImagens(id, novasImagens);
-        return ResponseEntity.ok(atualizado);
+        empreendimentoService.processarAtualizarImagens(id, banner, mapa, plantas, galeria);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}/dados")

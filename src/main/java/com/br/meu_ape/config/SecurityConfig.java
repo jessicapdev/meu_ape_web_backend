@@ -52,9 +52,12 @@ public class SecurityConfig {
                                 "/auth/login",
                                 "/auth/login/**",
                                 "/contatos",
+                                "/api/empreendimentos/buscar",
+                                "/api/empreendimentos/home",
+                                "/api/empreendimentos/*/detalhe",
+                                "/api/empreendimentos/*/imagens",
                                 "/contatos/**",
                                 "/usuarios/criar-conta",
-                                "/usuarios/criar-conta/**",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()

@@ -4,10 +4,8 @@ import com.br.meu_ape.config.JwtTokenProvider;
 import com.br.meu_ape.model.request.UsuarioRequest;
 import com.br.meu_ape.model.response.UsuarioResponse;
 import com.br.meu_ape.repository.UsuarioRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -44,10 +42,13 @@ public class AuthController {
 
         var usuario = repo.findByEmail(user.getEmail());
 
+
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String token = jwtTokenProvider.generateToken(authentication);
+        String token = jwtTokenProvider.generateToken(authentication, usuario.get());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(authentication);
+
         UsuarioResponse usuarioResp = new UsuarioResponse();
-        usuarioResp.fromSignin(token, usuario.get());
+        usuarioResp.fromSignin(token, refreshToken, usuario.get());
 
         return ResponseEntity.ok(usuarioResp);
     }

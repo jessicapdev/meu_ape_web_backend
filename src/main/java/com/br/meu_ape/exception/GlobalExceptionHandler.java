@@ -8,6 +8,8 @@ import org.springframework.boot.web.servlet.error.ErrorAttributes;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -81,6 +83,28 @@ public class GlobalExceptionHandler {
                         .excluding(ErrorAttributeOptions.Include.EXCEPTION));
       }
     };
+  }
+
+  @ExceptionHandler(BadCredentialsException.class)
+  public ResponseEntity<ErrorResponse> handleBadCredentials(BadCredentialsException ex) {
+    ErrorResponse error = new ErrorResponse(
+            HttpStatus.UNAUTHORIZED.value(),
+            new Date(),
+            "Não autorizado",
+            "Usuário ou senha inválidos."
+    );
+    return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+  }
+
+  @ExceptionHandler(UsernameNotFoundException.class)
+  public ResponseEntity<ErrorResponse> handleUserNotFound(UsernameNotFoundException ex, WebRequest request) {
+    ErrorResponse error = new ErrorResponse(
+            HttpStatus.NOT_FOUND.value(),
+            new Date(),
+            "Não encontrado",
+            request.getDescription(false)
+    );
+    return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
   }
 
   @ExceptionHandler(CustomException.class)

@@ -29,6 +29,7 @@ public class Empreendimento {
     private List<String> diferenciais;
     private List<String> tiposImoveis;
     private String descricao;
+    private List<Timeline> timeline;
     private int views;
     private int dias;
 
@@ -88,6 +89,10 @@ public class Empreendimento {
 
     public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }
+
+    public List<Timeline> getTimeline() { return timeline; }
+    public void setTimeline(List<Timeline> timeline) { this.timeline = timeline; }
+
     public int getViews() { return views; }
     public void setViews(int views) { this.views = views; }
 

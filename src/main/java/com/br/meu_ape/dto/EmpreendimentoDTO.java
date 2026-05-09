@@ -2,6 +2,7 @@ package com.br.meu_ape.dto;
 
 import com.br.meu_ape.model.Apartamento;
 import com.br.meu_ape.model.Imagens;
+import com.br.meu_ape.model.Timeline;
 
 import java.util.List;
 
@@ -25,6 +26,7 @@ public class EmpreendimentoDTO {
     private List<Apartamento> apartamentos;
     private List<String> diferenciais;
     private String descricao;
+    private List<Timeline> timeline;
     private int views;
     private int dias;
 
@@ -83,6 +85,9 @@ public class EmpreendimentoDTO {
 
     public String getDescricao() { return descricao; }
     public void setDescricao(String descricao) { this.descricao = descricao; }
+
+    public List<Timeline> getTimeline() { return timeline; }
+    public void setTimeline(List<Timeline> timeline) { this.timeline = timeline; }
 
     public int getViews() { return views; }
     public void setViews(int views) { this.views = views; }

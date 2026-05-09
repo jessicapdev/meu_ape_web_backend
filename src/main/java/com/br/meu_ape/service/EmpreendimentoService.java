@@ -11,6 +11,10 @@ import com.br.meu_ape.model.projection.EmpreendimentoHomeProjection;
 import com.br.meu_ape.model.projection.EmpreendimentoImagemProjection;
 import com.br.meu_ape.model.projection.EmpreendimentoPerfilProjection;
 import com.br.meu_ape.repository.EmpreendimentoRepository;
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBObject;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,8 +22,11 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,9 +35,13 @@ public class EmpreendimentoService {
 
     @Autowired
     private EmpreendimentoRepository empreendimentoRepository;
-
+    private final GridFsTemplate gridFsTemplate;
     @Autowired
     private MongoTemplate mongoTemplate;
+
+    public EmpreendimentoService(GridFsTemplate gridFsTemplate) {
+        this.gridFsTemplate = gridFsTemplate;
+    }
 
     public Empreendimento criar(EmpreendimentoDTO dto) {
         Empreendimento emp = converterParaEntidade(dto);
@@ -58,13 +69,77 @@ public class EmpreendimentoService {
                 .orElseThrow(() -> new RuntimeException("Empreendimento não encontrado com o ID: " + id));
     }
 
-    public Empreendimento atualizarImagens(String id, Imagens novasImagens) {
-        Empreendimento empreendimento = empreendimentoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Empreendimento não encontrado com o ID: " + id));
+    public Empreendimento processarAtualizarImagens(String id,
+                                                     MultipartFile banner,
+                                                     MultipartFile mapa,
+                                                     List<MultipartFile> plantas,
+                                                     List<MultipartFile> galeria) {
 
-        empreendimento.setImagens(novasImagens);
+        Empreendimento empreendimento = empreendimentoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Empreendimento não encontrado"));
+
+        if (empreendimento.getImagens() == null) {
+            empreendimento.setImagens(new Imagens());
+        }
+
+        if (banner != null && !banner.isEmpty()) {
+            String fileId = salvarNoGridFS(banner, "banner-" + id);
+            empreendimento.getImagens().setBanner(fileId);
+        }
+
+        if (mapa != null && !mapa.isEmpty()) {
+            String fileId = salvarNoGridFS(mapa, "mapa-" + id);
+            empreendimento.getImagens().setMap(fileId);
+        }
+
+        if (plantas != null && !plantas.isEmpty()) {
+            List<String> idsPlantas = plantas.stream()
+                    .filter(f -> !f.isEmpty())
+                    .map(f -> salvarNoGridFS(f, "planta-" + id))
+                    .toList();
+            empreendimento.getImagens().setPlantas(idsPlantas);
+        }
+
+        if (galeria != null && !galeria.isEmpty()) {
+            List<String> idsGaleria = galeria.stream()
+                    .filter(f -> !f.isEmpty())
+                    .map(f -> salvarNoGridFS(f, "galeria-" + id))
+                    .toList();
+            empreendimento.getImagens().setGaleria(idsGaleria);
+        }
 
         return empreendimentoRepository.save(empreendimento);
+    }
+
+    private String salvarNoGridFS(MultipartFile file, String baseName) {
+        try {
+            String fileName = baseName + "-" + System.currentTimeMillis() + ".webp";
+
+            DBObject metaData = new BasicDBObject();
+            metaData.put("type", "image");
+            metaData.put("contentType", "image/webp");
+            metaData.put("originalName", file.getOriginalFilename());
+
+            ObjectId fileId = gridFsTemplate.store(
+                    file.getInputStream(),
+                    fileName,
+                    "image/webp",
+                    metaData
+            );
+
+            return fileId.toString();
+        } catch (IOException e) {
+            throw new RuntimeException("Falha ao salvar imagem no GridFS: " + file.getOriginalFilename(), e);
+        }
+    }
+
+    public GridFSFile buscarArquivoNoGridFS(String fileId) {
+        GridFSFile file = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(fileId)));
+
+        if (file == null) {
+            throw new RuntimeException("Arquivo não encontrado no GridFS: " + fileId);
+        }
+        return file;
     }
 
     public EmpreendimentoEmpreendimentoProjection listarEmpreendimentoById(String id) {
@@ -93,6 +168,7 @@ public class EmpreendimentoService {
         empreendimento.setBanheiros(dto.banheiros());
         empreendimento.setQuartos(dto.quartos());
         empreendimento.setVagas(dto.vagas());
+        empreendimento.setTimeline(dto.timeline());
         empreendimento.setPrecoMin(dto.precoMin());
         empreendimento.setPrecoMax(dto.precoMax());
         empreendimento.setDiferenciais(dto.diferenciais());
@@ -186,6 +262,7 @@ public class EmpreendimentoService {
         emp.setDiferenciais(dto.getDiferenciais());
         emp.setTiposImoveis(dto.getTiposImoveis());
         emp.setDescricao(dto.getDescricao());
+        emp.setTimeline(dto.getTimeline());
         emp.setViews(dto.getViews());
         emp.setDias(dto.getDias());
     }

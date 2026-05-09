@@ -34,7 +34,7 @@ public class UsuarioController {
         this.authenticationManager = authenticationManager;
     }
 
-    @RequestMapping(method=RequestMethod.POST)
+    @RequestMapping(value="/criar-conta", method=RequestMethod.POST)
     public ResponseEntity<Void> insert(@RequestBody Usuario obj){
         service.insert(obj);
         return ResponseEntity.noContent().build();
@@ -64,7 +64,7 @@ public class UsuarioController {
         return ResponseEntity.ok(usuario);
     }
 
-    @RequestMapping(value="criar-conta", method=RequestMethod.PUT)
+    @RequestMapping(method=RequestMethod.PUT)
     public ResponseEntity<Void> update(@Validated  @RequestBody Usuario obj,
                                        @RequestHeader(value = "Authorization", required = false) String authorization){
         if (!StringUtils.hasText(obj.getEmail())) {
@@ -99,6 +99,5 @@ public class UsuarioController {
         Page<Usuario> list = service.findPage(page, linesPerPage, orderBy, direction);
         return ResponseEntity.ok().body(list);
     }
-
 }
 

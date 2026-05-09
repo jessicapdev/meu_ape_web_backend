@@ -3,6 +3,10 @@ package com.br.meu_ape.service;
 import com.br.meu_ape.dto.ContatoDTO;
 import com.br.meu_ape.model.Contato;
 import com.br.meu_ape.repository.ContatoRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.rest.webmvc.ResourceNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -19,12 +23,15 @@ public class ContatoService {
         this.contatoRepository = contatoRepository;
     }
 
-    public List<Contato> listarContatosLidos(Boolean lido) {
-        return contatoRepository.findAllByLido(lido);
+    public Page<Contato> listarContatosLidos(Boolean lido, int pagina, int tamanho) {
+        Pageable pageable = PageRequest.of(pagina, tamanho, Sort.by("data").descending());
+
+        return contatoRepository.findAllByLido(lido, pageable);
     }
 
-    public List<Contato> listarContatos() {
-        return contatoRepository.findAll();
+    public Page<Contato> listarContatos(Pageable pageable) {
+
+        return contatoRepository.findAll(pageable);
     }
 
     public Contato salvarContato(ContatoDTO dto) {

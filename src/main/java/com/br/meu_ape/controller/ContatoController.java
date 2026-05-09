@@ -3,6 +3,10 @@ package com.br.meu_ape.controller;
 import com.br.meu_ape.dto.ContatoDTO;
 import com.br.meu_ape.model.Contato;
 import com.br.meu_ape.service.ContatoService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,8 +39,19 @@ public class ContatoController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping
-    public ResponseEntity<List<Contato>> listarContato() {
-        return ResponseEntity.ok(contatoService.listarContatos());
+    @GetMapping("/listar")
+    public ResponseEntity<Page<Contato>> listarContato(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "status") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection
+    ) {
+        Sort sort = "desc".equalsIgnoreCase(sortDirection)
+                ? Sort.by(sortBy).descending()
+                : Sort.by(sortBy).ascending();
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return ResponseEntity.ok(contatoService.listarContatos(pageable));
     }
 }

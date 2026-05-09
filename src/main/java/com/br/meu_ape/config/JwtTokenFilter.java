@@ -37,7 +37,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
               new UsernamePasswordAuthenticationToken(
                       username,
                       null,
-                      Collections.emptyList() // ou getAuthorities(token) se tiver roles
+                      Collections.emptyList()
               );
 
       authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -60,6 +60,8 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     String path = request.getRequestURI();
     return path.startsWith("/auth/login") ||
             path.startsWith("/contatos") ||
+            path.startsWith("/api/empreendimentos/buscar") ||
+            path.startsWith("/api/empreendimentos/home") ||
             path.startsWith("/usuarios/criar-conta");
   }
 }

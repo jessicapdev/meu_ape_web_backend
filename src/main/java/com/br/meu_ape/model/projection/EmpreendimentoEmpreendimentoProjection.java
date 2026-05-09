@@ -1,5 +1,7 @@
 package com.br.meu_ape.model.projection;
 
+import com.br.meu_ape.model.Timeline;
+
 import java.util.List;
 
 public interface EmpreendimentoEmpreendimentoProjection {
@@ -17,6 +19,7 @@ public interface EmpreendimentoEmpreendimentoProjection {
     List<Integer> getBanheiros();
     List<Integer> getQuartos();
     List<Integer> getVagas();
+    List<Timeline> getTimeline();
     double getPrecoMin();
     double getPrecoMax();
     List<String> getDiferenciais();
