@@ -49,16 +49,16 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/auth/login",
-                                "/auth/login/**",
-                                "/contatos",
-                                "/api/empreendimentos/buscar",
-                                "/api/empreendimentos/home",
-                                "/api/empreendimentos/*/detalhe",
-                                "/api/empreendimentos/*/imagens",
-                                "/contatos/**",
-                                "/usuarios/criar-conta",
-                                "/error"
+                                "api/v1/auth/login",
+                                "api/v1/auth/login/**",
+                                "api/v1/contatos",
+                                "api/v1/empreendimentos/buscar",
+                                "api/v1/empreendimentos/home",
+                                "api/v1/empreendimentos/*/detalhe",
+                                "api/v1/empreendimentos/*/imagens",
+                                "api/v1/contatos/**",
+                                "api/v1/usuarios/criar-conta",
+                                "api/v1/error"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -77,7 +77,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        configuration.setAllowedOrigins(List.of("http://localhost:4200", "https://d3b199kp58qxuz.cloudfront.net"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

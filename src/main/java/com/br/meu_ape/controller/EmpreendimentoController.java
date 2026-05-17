@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/empreendimentos")
+@RequestMapping("/empreendimentos")
 @CrossOrigin(origins = "*")
 public class EmpreendimentoController {
 

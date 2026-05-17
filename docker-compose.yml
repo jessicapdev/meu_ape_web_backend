@@ -1,0 +1,33 @@
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb_meuape
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      # Define o usuário e senha root (admin)
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: PortCC@192911
+      MONGO_INITDB_DATABASE: meuape
+    volumes:
+      - mongo_data:/data/db
+
+  app:
+    build: .
+    container_name: java_app
+    restart: always
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongodb
+    environment:
+      # Mapeia as propriedades do Spring para as variáveis do container
+      SPRING_DATA_MONGODB_AUTHENTICATION_DATABASE: admin
+      SPRING_DATA_MONGODB_USERNAME: admin
+      SPRING_DATA_MONGODB_PASSWORD: PortCC@192911
+      SPRING_DATA_MONGODB_DATABASE: meuape
+      SPRING_DATA_MONGODB_HOST: mongodb
+
+volumes:
+  mongo_data:
