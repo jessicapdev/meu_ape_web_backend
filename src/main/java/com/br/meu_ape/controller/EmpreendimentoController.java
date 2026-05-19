@@ -3,6 +3,7 @@ package com.br.meu_ape.controller;
 import com.br.meu_ape.dto.EmpreendimentoDTO;
 import com.br.meu_ape.dto.EmpreendimentoFiltroDTO;
 import com.br.meu_ape.dto.EmpreendimentoUpdateDTO;
+import com.br.meu_ape.dto.ImagensConfigDTO;
 import com.br.meu_ape.model.Apartamento;
 import com.br.meu_ape.model.Empreendimento;
 import com.br.meu_ape.model.projection.EmpreendimentoEmpreendimentoProjection;
@@ -27,6 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -128,10 +130,18 @@ public class EmpreendimentoController {
             @RequestParam(value = "banner", required = false) MultipartFile banner,
             @RequestParam(value = "mapa", required = false) MultipartFile mapa,
             @RequestParam(value = "plantas", required = false) List<MultipartFile> plantas,
-            @RequestParam(value = "galeria", required = false) List<MultipartFile> galeria) {
+            @RequestParam(value = "galeria", required = false) List<MultipartFile> galeria,
+            @RequestPart(value = "config", required = false) ImagensConfigDTO config) {
 
-        empreendimentoService.processarAtualizarImagens(id, banner, mapa, plantas, galeria);
-        return ResponseEntity.noContent().build();
+        if (config == null) {
+            config = new ImagensConfigDTO(false, null, false, null, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>());
+        }
+
+        Empreendimento empreendimentoAtualizado = empreendimentoService.processarAtualizarImagens(
+                id, banner, mapa, plantas, galeria, config
+        );
+
+        return ResponseEntity.ok(empreendimentoAtualizado);
     }
 
     @GetMapping("/{id}/dados")

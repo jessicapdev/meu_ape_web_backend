@@ -19,6 +19,12 @@ public interface EmpreendimentoHomeProjection {
     ImagensSoloBanner getImagens();
 
     interface ImagensSoloBanner {
-        String getBanner();
+        ImagemItemProjection getBanner();
+    }
+
+    interface ImagemItemProjection {
+        String getFileId();
+        String getTitulo();
+        String getDescricao();
     }
 }

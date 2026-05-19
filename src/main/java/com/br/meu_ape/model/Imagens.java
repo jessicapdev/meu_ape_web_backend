@@ -1,24 +1,46 @@
 package com.br.meu_ape.model;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Imagens {
-    private String banner;
-    private String map;
-    private List<String> plantas;
-    private List<String> galeria;
+
+    private ImagemItem banner;
+    private ImagemItem map;
+    private List<ImagemItem> plantas = new ArrayList<>();
+    private List<ImagemItem> galeria = new ArrayList<>();
 
     public Imagens() {}
 
-    public String getBanner() { return banner; }
-    public void setBanner(String banner) { this.banner = banner; }
+    public ImagemItem getBanner() {
+        return banner;
+    }
 
-    public String getMap() { return map; }
-    public void setMap(String map) { this.map = map; }
+    public void setBanner(ImagemItem banner) {
+        this.banner = banner;
+    }
 
-    public List<String> getPlantas() { return plantas; }
-    public void setPlantas(List<String> plantas) { this.plantas = plantas; }
+    public ImagemItem getMap() {
+        return map;
+    }
 
-    public List<String> getGaleria() { return galeria; }
-    public void setGaleria(List<String> galeria) { this.galeria = galeria; }
+    public void setMap(ImagemItem map) {
+        this.map = map;
+    }
+
+    public List<ImagemItem> getPlantas() {
+        return plantas;
+    }
+
+    public void setPlantas(List<ImagemItem> plantas) {
+        this.plantas = plantas;
+    }
+
+    public List<ImagemItem> getGaleria() {
+        return galeria;
+    }
+
+    public void setGaleria(List<ImagemItem> galeria) {
+        this.galeria = galeria;
+    }
 }

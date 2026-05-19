@@ -1,10 +1,9 @@
 package com.br.meu_ape.service;
 
-import com.br.meu_ape.dto.EmpreendimentoDTO;
-import com.br.meu_ape.dto.EmpreendimentoFiltroDTO;
-import com.br.meu_ape.dto.EmpreendimentoUpdateDTO;
+import com.br.meu_ape.dto.*;
 import com.br.meu_ape.model.Apartamento;
 import com.br.meu_ape.model.Empreendimento;
+import com.br.meu_ape.model.ImagemItem;
 import com.br.meu_ape.model.Imagens;
 import com.br.meu_ape.model.projection.EmpreendimentoEmpreendimentoProjection;
 import com.br.meu_ape.model.projection.EmpreendimentoHomeProjection;
@@ -27,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -70,45 +70,130 @@ public class EmpreendimentoService {
     }
 
     public Empreendimento processarAtualizarImagens(String id,
-                                                     MultipartFile banner,
-                                                     MultipartFile mapa,
-                                                     List<MultipartFile> plantas,
-                                                     List<MultipartFile> galeria) {
+                                                    MultipartFile banner,
+                                                    MultipartFile mapa,
+                                                    List<MultipartFile> plantas,
+                                                    List<MultipartFile> galeria,
+                                                    ImagensConfigDTO config) {
 
         Empreendimento empreendimento = empreendimentoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Empreendimento não encontrado"));
 
-        if (empreendimento.getImagens() == null) {
-            empreendimento.setImagens(new Imagens());
-        }
+        Imagens imagens = empreendimento.getImagens();
+        if (imagens == null) imagens = new Imagens();
 
+        if (!config.manterBanner() && imagens.getBanner() != null) {
+            deletarDoGridFS(imagens.getBanner().getFileId());
+            imagens.setBanner(null);
+        }
         if (banner != null && !banner.isEmpty()) {
+            if (imagens.getBanner() != null) deletarDoGridFS(imagens.getBanner().getFileId());
             String fileId = salvarNoGridFS(banner, "banner-" + id);
-            empreendimento.getImagens().setBanner(fileId);
+
+            String titulo = config.bannerMeta() != null ? config.bannerMeta().titulo() : null;
+            String desc = config.bannerMeta() != null ? config.bannerMeta().descricao() : null;
+            imagens.setBanner(new ImagemItem(fileId, titulo, desc));
+
+        } else if (config.manterBanner() && imagens.getBanner() != null && config.bannerMeta() != null) {
+            // Atualiza os metadados do banner existente
+            imagens.getBanner().setTitulo(config.bannerMeta().titulo());
+            imagens.getBanner().setDescricao(config.bannerMeta().descricao());
         }
 
+        // --- MAPA ---
+        if (!config.manterMap() && imagens.getMap() != null) {
+            deletarDoGridFS(imagens.getMap().getFileId());
+            imagens.setMap(null);
+        }
         if (mapa != null && !mapa.isEmpty()) {
+            if (imagens.getMap() != null) deletarDoGridFS(imagens.getMap().getFileId());
             String fileId = salvarNoGridFS(mapa, "mapa-" + id);
-            empreendimento.getImagens().setMap(fileId);
+
+            String titulo = config.mapMeta() != null ? config.mapMeta().titulo() : null;
+            String desc = config.mapMeta() != null ? config.mapMeta().descricao() : null;
+            imagens.setMap(new ImagemItem(fileId, titulo, desc));
+
+        } else if (config.manterMap() && imagens.getMap() != null && config.mapMeta() != null) {
+            // Atualiza os metadados do mapa existente
+            imagens.getMap().setTitulo(config.mapMeta().titulo());
+            imagens.getMap().setDescricao(config.mapMeta().descricao());
         }
 
+        // --- PLANTAS ---
+        List<ImagemItem> plantasFinais = new ArrayList<>();
+        List<ImagemItem> plantasAtuais = imagens.getPlantas() != null ? imagens.getPlantas() : new ArrayList<>();
+        List<String> plantasParaManter = config.plantasMantidas() != null ? config.plantasMantidas() : new ArrayList<>();
+
+        // Processa as plantas antigas (mantém e atualiza meta, ou deleta)
+        plantasAtuais.forEach(plantaAntiga -> {
+            if (plantasParaManter.contains(plantaAntiga.getFileId())) {
+                ImagemItem atualizada = atualizarMetadados(plantaAntiga, config.plantasMeta());
+                plantasFinais.add(atualizada);
+            } else {
+                deletarDoGridFS(plantaAntiga.getFileId());
+            }
+        });
+
+        // Processa as plantas novas
         if (plantas != null && !plantas.isEmpty()) {
-            List<String> idsPlantas = plantas.stream()
-                    .filter(f -> !f.isEmpty())
-                    .map(f -> salvarNoGridFS(f, "planta-" + id))
-                    .toList();
-            empreendimento.getImagens().setPlantas(idsPlantas);
+            plantas.stream().filter(f -> !f.isEmpty()).forEach(f -> {
+                String fileId = salvarNoGridFS(f, "planta-" + id);
+                ImagemItem novoItem = criarNovoItemComMetadados(fileId, f.getOriginalFilename(), config.plantasMeta());
+                plantasFinais.add(novoItem);
+            });
         }
+        imagens.setPlantas(plantasFinais);
 
+        // --- GALERIA ---
+        List<ImagemItem> galeriaFinal = new ArrayList<>();
+        List<ImagemItem> galeriaAtual = imagens.getGaleria() != null ? imagens.getGaleria() : new ArrayList<>();
+        List<String> galeriaParaManter = config.galeriaMantida() != null ? config.galeriaMantida() : new ArrayList<>();
+
+        // Processa a galeria antiga
+        galeriaAtual.forEach(imgAntiga -> {
+            if (galeriaParaManter.contains(imgAntiga.getFileId())) {
+                ImagemItem atualizada = atualizarMetadados(imgAntiga, config.galeriaMeta());
+                galeriaFinal.add(atualizada);
+            } else {
+                deletarDoGridFS(imgAntiga.getFileId());
+            }
+        });
+
+        // Processa a galeria nova
         if (galeria != null && !galeria.isEmpty()) {
-            List<String> idsGaleria = galeria.stream()
-                    .filter(f -> !f.isEmpty())
-                    .map(f -> salvarNoGridFS(f, "galeria-" + id))
-                    .toList();
-            empreendimento.getImagens().setGaleria(idsGaleria);
+            galeria.stream().filter(f -> !f.isEmpty()).forEach(f -> {
+                String fileId = salvarNoGridFS(f, "galeria-" + id);
+                ImagemItem novoItem = criarNovoItemComMetadados(fileId, f.getOriginalFilename(), config.galeriaMeta());
+                galeriaFinal.add(novoItem);
+            });
         }
+        imagens.setGaleria(galeriaFinal);
 
+        empreendimento.setImagens(imagens);
         return empreendimentoRepository.save(empreendimento);
+    }
+
+    private ImagemItem atualizarMetadados(ImagemItem itemAntigo, List<ImagemMetadadosDTO> metaList) {
+        if (metaList != null) {
+            for (ImagemMetadadosDTO meta : metaList) {
+                if (meta.reference() != null && meta.reference().equals(itemAntigo.getFileId())) {
+                    return new ImagemItem(itemAntigo.getFileId(), meta.titulo(), meta.descricao());
+                }
+            }
+        }
+        return itemAntigo; // Se não enviou alteração, mantém como estava
+    }
+
+
+    private ImagemItem criarNovoItemComMetadados(String fileId, String fileName, List<ImagemMetadadosDTO> metaList) {
+        if (metaList != null) {
+            for (ImagemMetadadosDTO meta : metaList) {
+                if (meta.reference() != null && meta.reference().equals(fileName)) {
+                    return new ImagemItem(fileId, meta.titulo(), meta.descricao());
+                }
+            }
+        }
+        return new ImagemItem(fileId, null, null); // Salva sem metadados se não achar
     }
 
     private String salvarNoGridFS(MultipartFile file, String baseName) {
@@ -130,6 +215,16 @@ public class EmpreendimentoService {
             return fileId.toString();
         } catch (IOException e) {
             throw new RuntimeException("Falha ao salvar imagem no GridFS: " + file.getOriginalFilename(), e);
+        }
+    }
+
+    private void deletarDoGridFS(String fileId) {
+        if (fileId != null && !fileId.trim().isEmpty()) {
+            try {
+                gridFsTemplate.delete(new Query(Criteria.where("_id").is(new ObjectId(fileId))));
+            } catch (IllegalArgumentException e) {
+                System.err.println("ID de arquivo inválido para exclusão: " + fileId);
+            }
         }
     }
 
